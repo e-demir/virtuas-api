@@ -164,6 +164,42 @@ namespace fazz.Controllers
             }
         }
 
+
+         [HttpGet]
+        public IActionResult GetAllApplicationsWithAnswers()
+        {
+            string connectionString = _config.GetConnectionString("schoolPortal");
+
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                var applications = new List<DetailApplication>();
+                
+                var answers = new List<AnswerAndQuestion>();
+                connection.Open();
+
+                var query = "SELECT  u.name as Username,u.surname as UserSurname,a.id as ApplicationId, a.date as ApplicationDate, ca.title as CategoryTitle, ca.description as CategoryDescription FROM applications a LEFT JOIN categories ca ON ca.Id = a.categoryId LEFT JOIN users u ON u.Id=a.userId ";
+                var response= connection.Query<DetailApplication>(query);
+
+                applications = response.ToList();
+
+                foreach (var item in applications)
+                {
+                   
+                    var query2 = "select ans.title as AnswerTitle, q.title as QuestionTitle from applications a " +
+                    "left join answers ans on ans.application_id = a.id left join questions q on q.id = ans.question_id where a.id = @applicationId";
+
+                    var response2 = connection.Query<AnswerAndQuestion>(query2, new { applicationId = item.ApplicationId });
+
+                    var answersFetched = response2.ToList();
+
+                    item.Answers = answersFetched;
+
+                }
+
+                return Ok(applications);
+            }
+        }
+
     }
 }
 

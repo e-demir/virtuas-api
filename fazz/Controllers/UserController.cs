@@ -98,6 +98,48 @@ namespace fazz.Controllers
 
 
 
+    [HttpGet]
+        public IActionResult UserDetails()
+        {
+            string connectionString = _config.GetConnectionString("schoolPortal");
+
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                var query = "SELECT u.id,u.name,u.surname,u.email,u.phoneNumber, COUNT(app.id) AS ApplicationCount FROM users u LEFT JOIN applications app ON app.userId = u.id WHERE u.role = 'client' GROUP BY u.id";
+                var user = connection.Query<DetailUser>(query).ToList();
+
+                if (user == null)
+                {
+                    return Unauthorized(new LoginResponse { IsSuccessful = false, Role = "" }); // Kullanıcı bulunamazsa 401 döndür
+                }
+
+                return Ok(user);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult UserApplications()
+        {
+            string connectionString = _config.GetConnectionString("schoolPortal");
+
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                var query = "SELECT u.id,u.name,u.surname,u.email,u.phoneNumber, COUNT(app.id) AS ApplicationCount FROM users u LEFT JOIN applications app ON app.userId = u.id WHERE u.role = 'client' GROUP BY u.id";
+                var user = connection.Query<DetailUser>(query).ToList();
+
+                if (user == null)
+                {
+                    return Unauthorized(new LoginResponse { IsSuccessful = false, Role = "" }); // Kullanıcı bulunamazsa 401 döndür
+                }
+
+                return Ok(user);
+            }
+        }
     }
+
 }
 

@@ -102,6 +102,11 @@ namespace fazz.Controllers
                             );
                         }
 
+                        var creditUpdate = "INSERT INTO clinic_credits (clinicId, credit, add_credit, date_added) VALUES (@ClinicId, 0, 0, @DateAdded)";
+                        connection.Execute(creditUpdate, new { ClinicId = clinicId, DateAdded = DateTime.Now.ToString("yyyy-MM-dd") }, transaction);
+
+
+
                         transaction.Commit();
                         return Ok(new { username, password });
                     }
@@ -227,23 +232,69 @@ namespace fazz.Controllers
         }
 
         [HttpPut]
-        public IActionResult AddCreditToClinic(int clinicId, int newCredit)
+        public IActionResult AddCreditToClinic(int clinicId, int clinicCredit, int newCredit)
         {
             string connectionString = _config.GetConnectionString("schoolPortal");
 
             using (var connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
-                //
-
-                var deleteClinicsQuery = "update clinics set credit = @credit where id = @id";
-                var result = connection.Execute(
-                    deleteClinicsQuery,
-                    new { credit = newCredit, id = clinicId }
-                );
-                if (result > 0)
+                using (var transaction = connection.BeginTransaction())
                 {
-                    return Ok();
+                    try
+                    {
+                        var getCurrentCreditQuery = "SELECT credit FROM clinics WHERE id = @clinicId";
+                        int currentCredit = connection.QuerySingle<int>(getCurrentCreditQuery, new { clinicId = clinicId }, transaction);
+
+                        var addClinicCredit = "INSERT INTO clinic_credits (clinicId, credit, add_credit, date_added,previous_credit) VALUES (@clinicId, @credit, @add_credit, @date_added,@previous_credit)";
+                        connection.Execute(
+                            addClinicCredit,
+                            new { clinicId = clinicId, credit = clinicCredit, add_credit = newCredit, date_added = DateTime.Now.ToString("yyyy-MM-dd HH:mm"), previous_credit = currentCredit },
+                            transaction: transaction);
+
+                        var updateClinicsQuery = "UPDATE clinics SET credit = @credit WHERE id = @id";
+                        var result = connection.Execute(
+                            updateClinicsQuery,
+                            new { credit = clinicCredit, id = clinicId },
+                            transaction: transaction);
+
+                        transaction.Commit();
+
+                        if (result > 0)
+                        {
+                            return Ok();
+                        }
+                        else
+                        {
+                            return NotFound();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        // Hata günlüğü kaydı yapılabilir veya başka hata işlemleri yapılabilir
+                        return StatusCode(500, "An error occurred: " + ex.Message);
+                    }
+                }
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetCreditHistoryss(int clinicId)
+        {
+           string connectionString = _config.GetConnectionString("schoolPortal");
+
+             using (var connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                var getHistory = "SELECT * FROM clinic_credits WHERE clinicId = @clinicId";
+
+                var result = connection.Query(getHistory, new { clinicId = clinicId }).ToList();
+                
+                if (result != null && result.Count > 0)
+                {
+                    return Ok(result);
                 }
                 else
                 {
@@ -251,6 +302,8 @@ namespace fazz.Controllers
                 }
             }
         }
+
+
 
         [HttpPut]
         public IActionResult UpdateCategory([FromBody] List<int> categoryIds, int clinicId)
@@ -266,7 +319,7 @@ namespace fazz.Controllers
                     {
                         var deleteCategoiresQuery =
                             "delete from fazz.clinic_categories where clinic_id = @clinicId";
-                        connection.Execute(deleteCategoiresQuery, new { clinicId },transaction);                        
+                        connection.Execute(deleteCategoiresQuery, new { clinicId }, transaction);
 
                         foreach (var item in categoryIds)
                         {
@@ -281,10 +334,11 @@ namespace fazz.Controllers
                         transaction.Commit();
                         return Ok();
                     }
-                    catch (Exception ex) {
+                    catch (Exception ex)
+                    {
                         transaction.Rollback();
-                        return StatusCode(500,ex.Message);    
-                     }
+                        return StatusCode(500, ex.Message);
+                    }
                 }
             }
         }

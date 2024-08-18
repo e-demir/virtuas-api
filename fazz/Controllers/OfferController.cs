@@ -50,7 +50,14 @@ namespace fazz.Controllers
                             transaction
                         );
 
-                        // price düşür kategoriden
+                     
+                         var getCurrentCreditQuery = "SELECT credit FROM clinics WHERE id = @clinicId";
+                        int currentCredit = connection.QuerySingle<int>(getCurrentCreditQuery, new { clinicId = request.ClinicId }, transaction);
+
+                        
+
+
+                           // price düşür kategoriden
                         var updateCredit =
                             "UPDATE clinics SET credit = credit - @price WHERE id = @clinicId;";
                         connection.Execute(
@@ -58,6 +65,15 @@ namespace fazz.Controllers
                             new { clinicId = request.ClinicId, price = request.Price },
                             transaction
                         );
+                       
+    
+                        var addClinicCredit = "INSERT INTO clinic_credits (clinicId,credit, add_credit, date_added,previous_credit) VALUES (@clinicId, (SELECT credit FROM clinics WHERE id = @clinicId), @add_credit, @date_added,@previous_credit)";
+                        connection.Execute(
+                            addClinicCredit,
+                            new { clinicId = request.ClinicId, add_credit = -Math.Abs(request.Price), date_added = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),previous_credit=currentCredit},
+                            transaction
+                            );
+
                         transaction.Commit();
                         return Ok();
                     }
@@ -74,7 +90,7 @@ namespace fazz.Controllers
         public IActionResult GetMade(int? clinicId)
         {
             string connectionString = _config.GetConnectionString("schoolPortal");
-            
+
             var res = new ClientDataResponse();
 
             using (var connection = new MySqlConnection(connectionString))

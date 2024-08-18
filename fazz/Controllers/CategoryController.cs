@@ -136,29 +136,44 @@ namespace fazz.Controllers
 
         [HttpPost]
         public IActionResult Update(AddOrUpdateCategoryRequest request)
+{
+    if (request == null)
+    {
+        return BadRequest();
+    }
+
+    var categoryToUpdate = new Category
+    {
+        Title = request.Title,
+        Description = request.Description,
+        Id = request.Id,
+        Credit = request.Credit,
+        Questions = request.Questions
+    };
+
+    string connectionString = _config.GetConnectionString("schoolPortal");
+
+    using (var connection = new MySqlConnection(connectionString))
+    {
+        connection.Open();
+        using (var transaction = connection.BeginTransaction())
         {
-            if (request == null)
+            try
             {
-                return BadRequest();
-            }
-
-            var categoryToUpdate = new Category
-            {
-                Title = request.Title,
-                Description = request.Description,
-                Id = request.Id,
-                Credit = request.Credit
-            };
-
-            string connectionString = _config.GetConnectionString("schoolPortal");
-
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                connection.Open();
-
                 var query =
-                    "UPDATE categories SET Title = @Title, Description = @Description, Credit=@Credit WHERE Id = @Id";
-                var result = connection.Execute(query, categoryToUpdate);
+                    "UPDATE categories SET Title = @Title, Description = @Description, Credit = @Credit WHERE Id = @Id";
+                var result = connection.Execute(query, categoryToUpdate, transaction);
+
+                var query2 = "UPDATE questions SET isActive = 0 WHERE categoryId = @categoryId";
+                connection.Execute(query2, new { categoryId = request.Id }, transaction);
+
+                foreach (var item in request.Questions)
+                {
+                    var queryQuestion = "INSERT INTO questions (title, categoryId) VALUES (@title, @categoryId)";
+                    connection.Execute(queryQuestion, new { title = item.Title, categoryId = item.CategoryId }, transaction);
+                }
+
+                transaction.Commit();
 
                 if (result > 0)
                 {
@@ -169,7 +184,16 @@ namespace fazz.Controllers
                     return NotFound();
                 }
             }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                // Log the exception message
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                return StatusCode(500, "An error occurred while updating the category.");
+            }
         }
+    }
+}
 
         [HttpDelete]
         public IActionResult Delete(int id)
@@ -185,7 +209,7 @@ namespace fazz.Controllers
                     try
                     {
                         var deleteQuestionsQuery =                            
-                             "UPDATE questions SET isActive = 0 WHERE category_id = @CategoryId";
+                             "UPDATE questions SET isActive = 0 WHERE categoryId = @CategoryId";
                         connection.Execute(
                             deleteQuestionsQuery,
                             new { CategoryId = id },
@@ -203,7 +227,7 @@ namespace fazz.Controllers
 
                         if (result > 0)
                         {
-                            return NoContent();
+                            return Ok();
                         }
                         else
                         {

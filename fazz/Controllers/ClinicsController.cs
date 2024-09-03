@@ -51,7 +51,7 @@ namespace fazz.Controllers
                     try
                     {
                         var username = RandomGenerator.GenerateRandomUsername();
-                        var password = RandomGenerator.GenerateRandomPassword();
+                        var password = "1111";
                         var user = new
                         {
                             name = request.Title,
@@ -60,12 +60,12 @@ namespace fazz.Controllers
                             password = password,
                             role = "clinic",
                             phoneNumber = "", //TODO
-                            username = username
+                            username = username                            
                         };
 
                         int userId = connection.QuerySingle<int>(
-                            @"INSERT INTO users (name,surname,email,password,role,phoneNumber,username)
-                            VALUES (@name, @surname, @email, @password,@role,@phoneNumber,@username);
+                            @"INSERT INTO users (name,surname,email,password,role,phoneNumber,username,isFirstPassword)
+                            VALUES (@name, @surname, @email, @password,@role,@phoneNumber,@username,1);
                             SELECT LAST_INSERT_ID();",
                             user,
                             transaction

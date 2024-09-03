@@ -38,21 +38,75 @@ namespace fazz.Controllers
             {
                 connection.Open();
 
-                var query = "SELECT * FROM users WHERE username = @username AND password = @password";
-                var user =  connection.QueryFirstOrDefault<User>(query, new { username = request.Username, password = request.Password });
+                var firstPasswordQuery =
+                    "select isFirstPassword from users where username = @username and role='clinic'";
+                var isFirstPassword = connection.QueryFirstOrDefault<bool>(
+                    firstPasswordQuery,
+                    new { username = request.Username }
+                );
+                if (isFirstPassword)
+                {
+                    return Unauthorized("Change First Password");
+                }
+                var query =
+                    "SELECT * FROM users WHERE username = @username AND password = @password";
+                var user = connection.QueryFirstOrDefault<User>(
+                    query,
+                    new { username = request.Username, password = request.Password }
+                );
 
                 if (user == null)
                 {
-                    return Unauthorized(new LoginResponse{ IsSuccessful = false, Role = "" }); // Kullanıcı bulunamazsa 401 döndür
+                    return Unauthorized(new LoginResponse { IsSuccessful = false, Role = "" }); // Kullanıcı bulunamazsa 401 döndür
                 }
-                if (user.Role == "clinic"){
+                if (user.Role == "clinic")
+                {
                     var query2 = "SELECT id FROM clinics WHERE userId = @userId";
-                    clinicId =  connection.QueryFirstOrDefault<int>(query2, new { userId = user.Id});
+                    clinicId = connection.QueryFirstOrDefault<int>(
+                        query2,
+                        new { userId = user.Id }
+                    );
                 }
-                
 
-                return Ok(new LoginResponse { IsSuccessful = true, Role = user.Role, Username = user.Name ,Id=user.Id, ClinicId = clinicId});                
+                return Ok(
+                    new LoginResponse
+                    {
+                        IsSuccessful = true,
+                        Role = user.Role,
+                        Username = user.Name,
+                        Id = user.Id,
+                        ClinicId = clinicId
+                    }
+                );
             }
+        }
+
+        [HttpPost]
+        public IActionResult RenewPassword(RenewPasswordRequest request)
+        {
+            string connectionString = _config.GetConnectionString("schoolPortal");
+           
+            try
+            {
+                using (var connection = new MySqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    var updateQuery =
+                        "update users set password=@password, isFirstPassword=0 where username = @username";
+                    var isFirstPassword = connection.QueryFirstOrDefault<int>(
+                        updateQuery,
+                        new { password = request.NewPassword, username = request.Username }
+                    );
+                    if (isFirstPassword == 0)
+                    return Ok("Successfully changed");
+                    else
+                    return StatusCode(500);
+                }
+            }
+            catch (Exception ex) {
+                return StatusCode(500,ex.Message);
+             }
         }
 
         [HttpPost]
@@ -65,7 +119,10 @@ namespace fazz.Controllers
                 connection.Open();
 
                 var query = "SELECT * FROM users WHERE email = @Email";
-                var existingUser = connection.QueryFirstOrDefault<User>(query, new { Email = request.Email });
+                var existingUser = connection.QueryFirstOrDefault<User>(
+                    query,
+                    new { Email = request.Email }
+                );
 
                 if (existingUser != null)
                 {
@@ -79,12 +136,12 @@ namespace fazz.Controllers
                     Email = request.Email,
                     Password = request.Password, // Parolayı hash'lemeyi düşünün
                     Role = request.Role,
-                     PhoneNumber = request.PhoneNumber
-
+                    PhoneNumber = request.PhoneNumber
                 };
 
-                var query2 = "INSERT INTO users (name, surname, email, password, role,phoneNumber) VALUES (@Name, @Surname, @Email, @Password, @Role, @PhoneNumber)";
-                var result =  connection.Execute(query2, user);
+                var query2 =
+                    "INSERT INTO users (name, surname, email, password, role,phoneNumber) VALUES (@Name, @Surname, @Email, @Password, @Role, @PhoneNumber)";
+                var result = connection.Execute(query2, user);
                 var isCreated = result > 0;
 
                 if (!isCreated)
@@ -95,11 +152,5 @@ namespace fazz.Controllers
                 return Ok(new { Message = "User created successfully" });
             }
         }
-
-
-
-
-
     }
 }
-

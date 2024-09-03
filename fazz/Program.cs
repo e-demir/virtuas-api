@@ -1,4 +1,5 @@
-﻿using MySqlConnector;
+﻿using fazz.Middlewares;
+using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -34,9 +36,12 @@ app.UseCors("CorsPolicy");
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<AuthMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllers();
+
 
 app.Run();
 

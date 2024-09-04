@@ -46,11 +46,21 @@ namespace fazz.Controllers
                     return Conflict(new { Message = "Clinic already in use" }); // Title zaten kullanılıyorsa 409 döndür
                 }
 
+                var query2 = "SELECT * FROM users WHERE username = @Username";
+                var existingQuestion2 = connection.QueryFirstOrDefault<User>(
+                    query2,
+                    new { username = request.Username  }
+                );
+
+                if (existingQuestion2 != null)
+                {
+                    return Conflict($"{request.Username} -- username already in use" ); // Title zaten kullanılıyorsa 409 döndür
+                }
+
                 using (var transaction = connection.BeginTransaction())
                 {
                     try
                     {
-                        var username = RandomGenerator.GenerateRandomUsername();
                         var password = "1111";
                         var user = new
                         {
@@ -60,7 +70,7 @@ namespace fazz.Controllers
                             password = password,
                             role = "clinic",
                             phoneNumber = "", //TODO
-                            username = username                            
+                            username = request.Username                           
                         };
 
                         int userId = connection.QuerySingle<int>(
@@ -108,7 +118,7 @@ namespace fazz.Controllers
 
 
                         transaction.Commit();
-                        return Ok(new { username, password });
+                        return Ok(new { request.Username, password });
                     }
                     catch (Exception ex)
                     {

@@ -57,7 +57,7 @@ namespace fazz.Controllers
 
                 if (user == null)
                 {
-                    return Unauthorized(new LoginResponse { IsSuccessful = false, Role = "" }); // Kullanıcı bulunamazsa 401 döndür
+                    return StatusCode(500,"Wrong email or password. Please check again"); // Kullanıcı bulunamazsa 401 döndür
                 }
                 if (user.Role == "clinic")
                 {
@@ -129,18 +129,19 @@ namespace fazz.Controllers
                     return Conflict(new { Message = "Email already in use" }); // Email zaten kullanılıyorsa 409 döndür
                 }
 
-                var user = new User
+                var user = new
                 {
                     Name = request.Name,
                     Surname = request.Surname,
                     Email = request.Email,
                     Password = request.Password, // Parolayı hash'lemeyi düşünün
                     Role = request.Role,
-                    PhoneNumber = request.PhoneNumber
+                    PhoneNumber = request.PhoneNumber,
+                    Username = request.Email
                 };
 
                 var query2 =
-                    "INSERT INTO users (name, surname, email, password, role,phoneNumber) VALUES (@Name, @Surname, @Email, @Password, @Role, @PhoneNumber)";
+                    "INSERT INTO users (name, surname, email, password, role,phoneNumber, username) VALUES (@Name, @Surname, @Email, @Password, @Role, @PhoneNumber, @Username)";
                 var result = connection.Execute(query2, user);
                 var isCreated = result > 0;
 

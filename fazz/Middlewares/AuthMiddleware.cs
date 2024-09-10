@@ -19,7 +19,7 @@ namespace fazz.Middlewares
         {
             // Check if the request path is for login or register
             if (context.Request.Path.StartsWithSegments("/api/Auth/Login", StringComparison.OrdinalIgnoreCase) ||
-                context.Request.Path.StartsWithSegments("/api/Auth/Login", StringComparison.OrdinalIgnoreCase))
+                context.Request.Path.StartsWithSegments("/api/Auth/Register", StringComparison.OrdinalIgnoreCase))
             {
                 // Skip authentication for these endpoints
                 await _nextMiddleware(context);

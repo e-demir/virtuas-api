@@ -107,7 +107,7 @@ namespace fazz.Controllers
             {
                 connection.Open();
 
-                var query = "select * from fazz.questions where categoryId = @categoryId";
+                var query = "select * from fazz.questions where categoryId = @categoryId and isActive=true";
 
                 var questions = connection.Query<Question>(query, new { categoryId = categoryId });
 
